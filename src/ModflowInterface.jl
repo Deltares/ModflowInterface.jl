@@ -28,7 +28,7 @@ end
 
 # Utilities
 
-function trimmed_string(buffer::Vector{UInt8})::String
+function trimmed_string(buffer)::String
     string_end = findfirst(iszero, buffer) - 1
     return String(buffer[1:string_end])
 end
@@ -135,26 +135,24 @@ end
 
 function BMI.get_output_item_count(::ModflowModel)::Int
     count = Ref{Cint}(0)
-    @ccall libmf6.get_input_output_count(count::Ptr{Cint})::Cint
+    @ccall libmf6.get_output_item_count(count::Ptr{Cint})::Cint
     return Int(count[])
 end
 
 
-function BMI.get_input_var_names(m::ModflowModel)::Tuple{String}
-    shape = (BMI_LENCOMPONENTNAME, BMI.get_input_item_count(m))
-    buffer = zeros(Uint8, shape)
+function BMI.get_input_var_names(m::ModflowModel)::Vector{String}
+    shape = (BMI_LENVARADDRESS, BMI.get_input_item_count(m))
+    buffer = zeros(UInt8, shape)
     @ccall libmf6.get_input_var_names(buffer::Ptr{UInt8})::Cint
-    strings = [trimmed_string(part) for part in eachcol(buffer)]
-    return tuple(strings...)
+    return [trimmed_string(part) for part in eachcol(buffer)]
 end
 
 
-function BMI.get_output_var_names(m::ModflowModel)::Tuple{String}
-    shape = (BMI_LENCOMPONENTNAME, BMI.get_output_item_count(m))
-    buffer = zeros(Uint8, shape)
+function BMI.get_output_var_names(m::ModflowModel)::Vector{String}
+    shape = (BMI_LENVARADDRESS, BMI.get_output_item_count(m))
+    buffer = zeros(UInt8, shape)
     @ccall libmf6.get_output_var_names(buffer::Ptr{UInt8})::Cint
-    strings = [trimmed_string(part) for part in eachcol(buffer)]
-    return tuple(strings...)
+    return [trimmed_string(part) for part in eachcol(buffer)]
 end
 
 
