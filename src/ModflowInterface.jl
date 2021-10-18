@@ -334,7 +334,9 @@ function get_var_shape(m::ModflowModel, name::String)
     rank = get_var_rank(m, name)
     shape = Vector{Int32}(undef, rank)
     @ccall libmf6.get_var_shape(name::Ptr{UInt8}, shape::Ptr{Int32})::Cint
-    return tuple(shape...)
+    # The BMI interface returns row major shape; Julia's memory layout is
+    # column major, so we flip the shape around.
+    return tuple(reverse(shape)...)
 end
 
 # XMI
