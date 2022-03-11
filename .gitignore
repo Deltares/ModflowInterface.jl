@@ -1,1 +1,8 @@
 /Manifest.toml
+
+# modflow output files
+*.cbc
+*.dis.grb
+*.hds
+*.lst
+*.stdout

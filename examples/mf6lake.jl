@@ -16,14 +16,14 @@ MF.prepare_solve(m, 1)
 
 function solve_to_convergence(model)
     converged = false
-    iteration = 1
+    iteration = 0
     while !converged
         @show iteration
         converged = MF.solve(model, 1)
         iteration += 1
     end
     println("converged")
-    return
+    return iteration
 end
 
 solve_to_convergence(m)
