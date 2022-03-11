@@ -51,7 +51,7 @@ function parse_type(type::String)::Type
     else
         error("unsupported type")
     end
-    return
+    return nothing
 end
 
 
@@ -67,7 +67,7 @@ function execute_function(m::ModflowModel, f::Function, args...)
         end
         error("BMI exception")
     end
-    return
+    return nothing
 end
 
 # BMI proper
@@ -80,13 +80,13 @@ end
 
 function BMI.finalize(::ModflowModel)
     @ccall libmf6.finalize()::Cint
-    return
+    return nothing
 end
 
 
 function BMI.update(::ModflowModel)
     @ccall libmf6.update()::Cint
-    return
+    return nothing
 end
 
 
@@ -194,7 +194,7 @@ end
 #    if type != T
 #        error("var type does match destination type")
 #    copyto!(BMI.get_value_ptr(m, name), dest)
-#    return
+#    return nothing
 #end
 
 
@@ -255,21 +255,21 @@ end
 function BMI.get_grid_x(::ModflowModel, grid::Int, x::Vector{Float64})
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_x(c_grid::Ptr{Cint}, x::Ptr{Float64})::Cint
-    return
+    return nothing
 end
 
 
 function BMI.get_grid_y(::ModflowModel, grid::Int, y::Vector{Float64})
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_y(c_grid::Ptr{Cint}, y::Ptr{Float64})::Cint
-    return
+    return nothing
 end
 
 
 function BMI.get_grid_z(::ModflowModel, grid::Int, z::Vector{Float64})
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_z(c_grid::Ptr{Cint}, z::Ptr{Float64})::Cint
-    return
+    return nothing
 end
 
 
@@ -293,7 +293,7 @@ end
 function BMI.get_grid_face_nodes(::ModflowModel, grid::Int, face_nodes::Vector{Cint})::Int
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_face_nodes(c_grid::Ptr{Cint}, face_nodes::Ptr{Cint})::Cint
-    return
+    return nothing
 end
 
 
@@ -308,7 +308,7 @@ function BMI.get_grid_nodes_per_face(
         c_grid::Ptr{Cint},
         nodes_per_face::Ptr{Cint},
     )::Cint
-    return
+    return nothing
 end
 
 
@@ -342,19 +342,19 @@ end
 function prepare_time_step(::ModflowModel, dt::Float64)
     timestep = Ref(dt)
     @ccall libmf6.prepare_time_step(timestep::Ptr{Float64})::Cint
-    return
+    return nothing
 end
 
 
 function do_time_step(::ModflowModel)
     @ccall libmf6.do_time_step()::Cint
-    return
+    return nothing
 end
 
 
 function finalize_time_step(::ModflowModel)
     @ccall libmf6.finalize_time_step()::Cint
-    return
+    return nothing
 end
 
 
@@ -368,7 +368,7 @@ end
 function prepare_solve(::ModflowModel, component_id::Int)
     id = Ref{Cint}(component_id)
     @ccall libmf6.prepare_solve(id::Ptr{Cint})::Cint
-    return
+    return nothing
 end
 
 
@@ -383,7 +383,7 @@ end
 function finalize_solve(::ModflowModel, component_id::Int)
     id = Ref{Cint}(component_id)
     @ccall libmf6.finalize_solve(id::Ptr{Cint})::Cint
-    return
+    return nothing
 end
 
 
