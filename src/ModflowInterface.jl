@@ -4,6 +4,8 @@ using Printf
 using Modflow6_jll
 import BasicModelInterface as BMI
 
+export ModflowModel
+
 const BMI_LENCOMPONENTNAME = unsafe_load(cglobal((:BMI_LENCOMPONENTNAME, libmf6), Cint))
 const BMI_LENVARADDRESS = unsafe_load(cglobal((:BMI_LENVARADDRESS, libmf6), Cint))
 const BMI_LENVARTYPE = unsafe_load(cglobal((:BMI_LENVARTYPE, libmf6), Cint))
@@ -29,8 +31,12 @@ end
 # Utilities
 
 function trimmed_string(buffer)::String
-    string_end = findfirst(iszero, buffer) - 1
-    return String(buffer[1:string_end])
+    i = findfirst(iszero, buffer)
+    if i === nothing
+        return String(buffer)
+    else
+        return String(buffer[begin:(i-1)])
+    end
 end
 
 
