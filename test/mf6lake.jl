@@ -42,24 +42,46 @@ end
 iteration = solve_to_convergence(m)
 @test iteration == 3
 
-@test mean(head) ≈ 99.88290434027091
-@test minimum(head) ≈ 90.0
-@test maximum(head) ≈ 100.0 atol = 1e-4
+@test mean(head) ≈ 99.88290434027091f0
+@test minimum(head) ≈ 90.0f0
+@test maximum(head) ≈ 100.0f0
 
 @test BMI.get_start_time(m) == 1.0
 @test BMI.get_current_time(m) == 1.0
 @test BMI.get_end_time(m) == 1.0
 
 @testset "variables" begin
-    n = BMI.get_input_item_count(m)
-    @test BMI.get_input_item_count(m) == n
-    @test BMI.get_output_item_count(m) == n
+    n_item = BMI.get_input_item_count(m)
+    @test BMI.get_input_item_count(m) == n_item
+    @test BMI.get_output_item_count(m) == n_item
     invars = BMI.get_input_var_names(m)
     outvars = BMI.get_output_var_names(m)
     @test invars == outvars
     @test outvars isa Vector{String}
-    @test length(outvars) == n
+    @test length(outvars) == n_item
     @test "TDIS/NPER" in outvars
+
+    n_cell = length(head)
+    @test n_cell == 102010
+    @test BMI.get_var_itemsize(m, headtag) == 8
+    @test BMI.get_var_nbytes(m, headtag) == 8 * n_cell
+
+    # copy data into pre allocated dest array
+    dest = zero(head)
+    BMI.get_value(m, headtag, dest)
+    # not the same memory, but same values
+    @test dest !== head
+    @test dest == head
+
+    # can also copy to a lower precision dest array
+    dest = zeros(Float32, size(head))
+    BMI.get_value(m, headtag, dest)
+    @test dest != head
+    @test dest ≈ head
+
+    var_type = BMI.get_var_type(m, headtag)
+    @test BMI.get_var_type(m, headtag) == "DOUBLE ($n_cell)"
+    @test MF.parse_type(var_type) == Float64
 end
 
 @testset "cglobal" begin
@@ -70,10 +92,27 @@ end
     @test MF.BMI_LENERRMESSAGE == 1025
 end
 
+@testset "utils" begin
+    @test MF.parse_type("Double (3)") == Float64
+    @test MF.parse_type("Float (3)") == Float32
+    @test MF.parse_type("INT (3)") == Int32
+    @test_throws ErrorException MF.parse_type("DateTime")
+
+    @test MF.trimmed_string(UInt8[]) == ""
+    @test MF.trimmed_string(UInt8[0]) == ""
+    @test MF.trimmed_string(UInt8[0, 65]) == ""
+    @test MF.trimmed_string(UInt8[65]) == "A"
+    @test MF.trimmed_string(UInt8[65, 66]) == "AB"
+    @test MF.trimmed_string(UInt8[65, 66, 0]) == "AB"
+    @test MF.trimmed_string(UInt8[65, 66, 0, 68]) == "AB"
+end
+
 # destroys the model, and deallocates the head array, don't use it anymore after this
 # if you need data to be separate from modflow, copy it, which is what `BMI.get_value` does
 head_copy = BMI.get_value(m, headtag)
+@test head !== head_copy
 @test head == head_copy
+
 BMI.finalize(m)
 
 # can still be accessed

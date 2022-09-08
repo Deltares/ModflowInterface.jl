@@ -31,26 +31,22 @@ function trimmed_string(buffer)::String
     if i === nothing
         return String(buffer)
     else
-        return String(buffer[begin:(i-1)])
+        bufview = view(buffer, 1:(i-1))
+        return String(bufview)
     end
 end
 
-function prepare_string(s::String)
-    return uppercase(s)
-end
-
-function parse_type(type::String)::Type
+function parse_type(type::String)::DataType
     type = lowercase(type)
-    if startswith(type, "double")
-        return Float64
+    return if startswith(type, "double")
+        Float64
     elseif startswith(type, "float")
-        return Float32
+        Float32
     elseif startswith(type, "int")
-        return Int32
+        Int32
     else
         error("unsupported type")
     end
-    return nothing
 end
 
 function execute_function(m::ModflowModel, f::Function, args...)
@@ -170,18 +166,14 @@ function BMI.get_value(m::ModflowModel, name::String)
     return copy(BMI.get_value_ptr(m, name))
 end
 
-# function BMI.get_value(m::ModflowModel, name::String, dest::Array{T} where T)
-#    type = parse_type(BMI.get_var_type(m, name))
-#    if type != T
-#        error("var type does match destination type")
-#    copyto!(BMI.get_value_ptr(m, name), dest)
-#    return nothing
-# end
+function BMI.get_value(m::ModflowModel, name::String, dest::Array{T}) where {T<:Real}
+    data = BMI.get_value_ptr(m, name)
+    return copyto!(dest, data)
+end
 
 function BMI.get_value_ptr(m::ModflowModel, name::String)
     type = parse_type(BMI.get_var_type(m, name))
     shape = get_var_shape(m, name)
-
     ptr = Ref(Ptr{type}(0))
     if type == Int32
         @ccall libmf6.get_value_ptr_int(name::Ptr{UInt8}, ptr::Ptr{Cvoid})::Cint
@@ -351,9 +343,9 @@ function get_var_address(
     component_name;
     subcomponent_name = "",
 )::String
-    v = prepare_string(var_name)
-    c = prepare_string(component_name)
-    s = prepare_string(subcomponent_name)
+    v = uppercase(var_name)
+    c = uppercase(component_name)
+    s = uppercase(subcomponent_name)
     buffer = zeros(UInt8, BMI_LENVARADDRESS)
 
     @ccall libmf6.get_var_address(
