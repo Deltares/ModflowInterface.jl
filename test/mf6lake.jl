@@ -1,5 +1,6 @@
 using Test
 using Statistics
+using ModflowInterface
 import ModflowInterface as MF
 import BasicModelInterface as BMI
 
@@ -8,10 +9,10 @@ cd(mf6lake_dir)
 
 mf6_modelname = "MF6LAKE"
 
-m = BMI.initialize(MF.ModflowModel)
+m = BMI.initialize(ModflowModel)
 
-@test m isa MF.ModflowModel
-@test m === MF.ModflowModel()
+@test m isa ModflowModel
+@test m === ModflowModel()
 
 @test BMI.get_component_name(m) === "MODFLOW 6"
 
@@ -28,7 +29,7 @@ head = BMI.get_value_ptr(m, headtag)
     @test unique(head) == [100.0, 0.0, 90.0]
 end
 
-function solve_to_convergence(model)
+function solve_to_convergence(model::ModflowModel)
     converged = false
     iteration = 0
     while !converged
@@ -43,7 +44,7 @@ iteration = solve_to_convergence(m)
 
 @test mean(head) ≈ 99.88290434027091
 @test minimum(head) ≈ 90.0
-@test maximum(head) ≈ 100.0 atol=1e-4
+@test maximum(head) ≈ 100.0 atol = 1e-4
 
 @test BMI.get_start_time(m) == 1.0
 @test BMI.get_current_time(m) == 1.0
