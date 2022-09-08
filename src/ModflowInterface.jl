@@ -182,7 +182,7 @@ function BMI.get_value_ptr(m::ModflowModel, name::String)
     type = parse_type(BMI.get_var_type(m, name))
     shape = get_var_shape(m, name)
 
-    ptr = Ref(C_NULL)
+    ptr = Ref(Ptr{type}(0))
     if type == Int32
         @ccall libmf6.get_value_ptr_int(name::Ptr{UInt8}, ptr::Ptr{Cvoid})::Cint
     elseif type == Float32
@@ -192,9 +192,8 @@ function BMI.get_value_ptr(m::ModflowModel, name::String)
     else
         error("unsupported type")
     end
-    typed_ptr = convert(Ptr{type}, ptr[])
 
-    values = unsafe_wrap(Array, typed_ptr, shape)
+    values = unsafe_wrap(Array, ptr[], shape)
     return values
 end
 
