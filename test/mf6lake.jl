@@ -125,16 +125,25 @@ end
     @test MF.trimmed_string(UInt8[65, 66, 0, 68]) == "AB"
 end
 
-# destroys the model, and deallocates the head array, don't use it anymore after this
-# if you need data to be separate from modflow, copy it, which is what `BMI.get_value` does
-head_copy = BMI.get_value(m, headtag)
-@test head !== head_copy
-@test head == head_copy
+@testset "finalize" begin
+    # finalize destroys the model, and deallocates the head array, don't use it anymore
+    # if you need data to be separate from modflow, copy it, which is what `BMI.get_value` does
+    head_copy = BMI.get_value(m, headtag)
+    @test head !== head_copy
+    @test head == head_copy
 
-@test m.state == MF.initialized
-BMI.finalize(m)
-@test m.state == MF.uninitialized
-BMI.finalize(m)
+    @test m.state == MF.initialized
+    BMI.finalize(m)
+    @test m.state == MF.uninitialized
+    # nothing happens when finalizing a finalized model
+    BMI.finalize(m)
 
-# can still be accessed
-@test head_copy[1] == 100.0
+    # can still be accessed
+    @test head_copy[1] == 100.0
+
+    # the registered finalizer will automatically close the model
+    BMI.initialize(m)
+    @test m.state == MF.initialized
+    finalize(m)
+    @test m.state == MF.uninitialized
+end

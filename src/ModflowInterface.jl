@@ -27,6 +27,10 @@ mutable struct ModflowModel
     # We store this as `working_directory` such that we can go there when needed.
     working_directory::String
     state::State
+    function ModflowModel(working_directory, state)
+        m = new(working_directory, state)
+        return finalizer(BMI.finalize, m)
+    end
 end
 
 function ModflowModel(path::String)
