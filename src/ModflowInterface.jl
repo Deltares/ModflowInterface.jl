@@ -12,8 +12,6 @@ const BMI_LENVARTYPE = unsafe_load(cglobal((:BMI_LENVARTYPE, libmf6), Cint))
 const BMI_LENGRIDTYPE = unsafe_load(cglobal((:BMI_LENGRIDTYPE, libmf6), Cint))
 const BMI_LENERRMESSAGE = unsafe_load(cglobal((:BMI_LENERRMESSAGE, libmf6), Cint))
 
-struct ModflowModel end
-
 @enum Status begin
     success = 0
     failure = 1
@@ -22,6 +20,34 @@ end
 @enum State begin
     uninitialized = 1
     initialized = 2
+end
+
+mutable struct ModflowModel
+    # Modflow requires the current directory to be the one where mfsim.nam is placed.
+    # We store this as `working_directory` such that we can go there when needed.
+    working_directory::String
+    state::State
+end
+
+function ModflowModel(path::String)
+    working_directory = if isdir(path)
+        namfile = normpath(path, "mfsim.nam")
+        isfile(namfile) || error("No mfsim.nam file found in $path")
+        path
+    elseif isfile(path)
+        if basename(path) == "mfsim.nam"
+            dirname(path)
+        else
+            error("Path should point to mfsim.nam or its directory, got: $path")
+        end
+    else
+        error("Path does not contain a Modflow model: $path")
+    end
+    ModflowModel(normpath(working_directory), uninitialized)
+end
+
+function Base.show(io::IO, m::ModflowModel)
+    println(io, "ModflowModel(", repr(basename(m.working_directory)), ", ", m.state, ')')
 end
 
 # Utilities
@@ -61,24 +87,45 @@ function execute_function(m::ModflowModel, f::Function, args...)
         end
         error("BMI exception")
     end
-    return nothing
+    return m
 end
 
 # BMI proper
 
+function BMI.initialize(m::ModflowModel)
+    if m.state == uninitialized
+        cd(m.working_directory) do
+            @ccall libmf6.initialize()::Cint
+        end
+        m.state = initialized
+    else
+        BMI.finalize(m)
+        BMI.initialize(m)
+    end
+    return m
+end
+
+# better to user the ::ModflowModel method since it is safer
 function BMI.initialize(::Type{ModflowModel})
     @ccall libmf6.initialize()::Cint
-    return ModflowModel()
+    return ModflowModel(pwd(), initialized)
 end
 
-function BMI.finalize(::ModflowModel)
-    @ccall libmf6.finalize()::Cint
-    return nothing
+function BMI.finalize(m::ModflowModel)
+    if m.state == initialized
+        cd(m.working_directory) do
+            @ccall libmf6.finalize()::Cint
+        end
+        m.state = uninitialized
+    end
+    return m
 end
 
-function BMI.update(::ModflowModel)
-    @ccall libmf6.update()::Cint
-    return nothing
+function BMI.update(m::ModflowModel)
+    cd(m.working_directory) do
+        @ccall libmf6.update()::Cint
+    end
+    return m
 end
 
 function BMI.get_start_time(::ModflowModel)::Float64
@@ -246,7 +293,11 @@ function BMI.get_grid_face_count(::ModflowModel, grid::Integer)::Int
     return Int(grid_face_count[])
 end
 
-function BMI.get_grid_face_nodes(::ModflowModel, grid::Integer, face_nodes::Vector{Cint})::Vector{Cint}
+function BMI.get_grid_face_nodes(
+    ::ModflowModel,
+    grid::Integer,
+    face_nodes::Vector{Cint},
+)::Vector{Cint}
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_face_nodes(c_grid::Ptr{Cint}, face_nodes::Ptr{Cint})::Cint
     return face_nodes
@@ -290,20 +341,26 @@ end
 
 # XMI
 
-function prepare_time_step(::ModflowModel, dt::Float64)
+function prepare_time_step(m::ModflowModel, dt::Float64)
     timestep = Ref(dt)
-    @ccall libmf6.prepare_time_step(timestep::Ptr{Float64})::Cint
-    return nothing
+    cd(m.working_directory) do
+        @ccall libmf6.prepare_time_step(timestep::Ptr{Float64})::Cint
+    end
+    return m
 end
 
-function do_time_step(::ModflowModel)
-    @ccall libmf6.do_time_step()::Cint
-    return nothing
+function do_time_step(m::ModflowModel)
+    cd(m.working_directory) do
+        @ccall libmf6.do_time_step()::Cint
+    end
+    return m
 end
 
-function finalize_time_step(::ModflowModel)
-    @ccall libmf6.finalize_time_step()::Cint
-    return nothing
+function finalize_time_step(m::ModflowModel)
+    cd(m.working_directory) do
+        @ccall libmf6.finalize_time_step()::Cint
+    end
+    return m
 end
 
 function get_subcomponent_count(::ModflowModel)::Int
@@ -312,23 +369,29 @@ function get_subcomponent_count(::ModflowModel)::Int
     return Int(count[])
 end
 
-function prepare_solve(::ModflowModel, component_id::Int)
+function prepare_solve(m::ModflowModel, component_id::Int = 1)
     id = Ref{Cint}(component_id)
-    @ccall libmf6.prepare_solve(id::Ptr{Cint})::Cint
-    return nothing
+    cd(m.working_directory) do
+        @ccall libmf6.prepare_solve(id::Ptr{Cint})::Cint
+    end
+    return m
 end
 
-function solve(::ModflowModel, component_id::Int)::Bool
+function solve(m::ModflowModel, component_id::Int = 1)::Bool
     id = Ref{Cint}(component_id)
     converged = Ref(false)
-    @ccall libmf6.solve(id::Ptr{Cint}, converged::Ptr{Bool})::Cint
+    cd(m.working_directory) do
+        @ccall libmf6.solve(id::Ptr{Cint}, converged::Ptr{Bool})::Cint
+    end
     return converged[]
 end
 
-function finalize_solve(::ModflowModel, component_id::Int)
+function finalize_solve(m::ModflowModel, component_id::Int = 1)
     id = Ref{Cint}(component_id)
-    @ccall libmf6.finalize_solve(id::Ptr{Cint})::Cint
-    return nothing
+    cd(m.working_directory) do
+        @ccall libmf6.finalize_solve(id::Ptr{Cint})::Cint
+    end
+    return m
 end
 
 function get_var_address(

@@ -4,15 +4,18 @@ using ModflowInterface
 import ModflowInterface as MF
 import BasicModelInterface as BMI
 
-mf6lake_dir = abspath(@__DIR__, "../examples/mf6lake")
-cd(mf6lake_dir)
-
+modeldir = normpath(@__DIR__, "../examples/mf6lake")
 mf6_modelname = "MF6LAKE"
 
-m = BMI.initialize(ModflowModel)
+m = ModflowModel(modeldir)
 
+@test string(m) == "ModflowModel(\"mf6lake\", uninitialized)\n"
+
+@test m.state == MF.uninitialized
+BMI.initialize(m)
+@test m.state == MF.initialized
+BMI.initialize(m)
 @test m isa ModflowModel
-@test m === ModflowModel()
 
 @test BMI.get_component_name(m) === "MODFLOW 6"
 
@@ -29,11 +32,11 @@ head = BMI.get_value_ptr(m, headtag)
     @test unique(head) == [100.0, 0.0, 90.0]
 end
 
-function solve_to_convergence(model::ModflowModel)
+function solve_to_convergence(m::ModflowModel)
     converged = false
     iteration = 0
     while !converged
-        converged = MF.solve(model, 1)
+        converged = MF.solve(m)
         iteration += 1
     end
     return iteration
@@ -128,6 +131,9 @@ head_copy = BMI.get_value(m, headtag)
 @test head !== head_copy
 @test head == head_copy
 
+@test m.state == MF.initialized
+BMI.finalize(m)
+@test m.state == MF.uninitialized
 BMI.finalize(m)
 
 # can still be accessed
