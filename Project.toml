@@ -1,7 +1,7 @@
 name = "ModflowInterface"
 uuid = "a348c28d-122a-4d3f-b833-160dba4591a7"
 authors = ["Deltares and contributors"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
