@@ -11,8 +11,9 @@ binaries of Modflow 6, and implements the
 [BasicModelInterface.jl](https://github.com/Deltares/BasicModelInterface.jl) with calls to
 the Modflow 6 shared library.
 
-Note that this package has not yet been made safe, in the sense that it is possible to crash
-julia if methods are called wrongly or in the wrong order.
+Note that it is possible to crash julia if methods are called wrongly or in the wrong order.
+For instance `initialize` is safe since we track the initialization status in the
+`ModflowModel` struct, but `prepare_time_step` will crash julia if run twice.
 
 See
 [examples/mf6lake.jl](https://github.com/Deltares/ModflowInterface.jl/blob/main/examples/mf6lake.jl)
