@@ -82,6 +82,21 @@ iteration = solve_to_convergence(m)
     var_type = BMI.get_var_type(m, headtag)
     @test BMI.get_var_type(m, headtag) == "DOUBLE ($n_cell)"
     @test MF.parse_type(var_type) == Float64
+    @test MF.get_var_rank(m, headtag) == 1
+    @test MF.get_var_shape(m, headtag) === (102010,)
+end
+
+@testset "grids" begin
+    grid = BMI.get_var_grid(m, headtag)
+    @test grid === 1
+    @test BMI.get_grid_rank(m, grid) == 3
+    @test BMI.get_grid_size(m, grid) == 102010
+    @test BMI.get_grid_type(m, grid) == "rectilinear"
+    @test BMI.get_grid_shape(m, grid) === (101, 101, 10)
+    @test BMI.get_grid_x(m, grid, zeros(101)) == 0:1:100
+    @test BMI.get_grid_y(m, grid, zeros(101)) == 101:-1:1
+    @test BMI.get_grid_node_count(m, grid) == 0
+    @test BMI.get_grid_face_count(m, grid) == 0
 end
 
 @testset "cglobal" begin

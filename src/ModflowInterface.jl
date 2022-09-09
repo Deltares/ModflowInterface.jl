@@ -139,9 +139,9 @@ function BMI.get_output_var_names(m::ModflowModel)::Vector{String}
 end
 
 function BMI.get_var_grid(::ModflowModel, name::String)::Int
-    grid_id = Ref{Cint}(0)
-    @ccall libmf6.get_var_grid(name::Ptr{UInt8}, grid_id::Ptr{Cint})::Cint
-    return Int(grid_id[])
+    grid = Ref{Cint}(0)
+    @ccall libmf6.get_var_grid(name::Ptr{UInt8}, grid::Ptr{Cint})::Cint
+    return Int(grid[])
 end
 
 function BMI.get_var_type(::ModflowModel, name::String)::String
@@ -189,86 +189,80 @@ function BMI.get_value_ptr(m::ModflowModel, name::String)
     return values
 end
 
-function BMI.get_grid_rank(::ModflowModel, grid::Int)::Int
+function BMI.get_grid_rank(::ModflowModel, grid::Integer)::Int
     grid_rank = Ref{Cint}(0)
     c_grid = Ref{Cint}(grid)
-    @ccall libmf6.get_var_grid(grid_rank::Ptr{Cint}, c_grid::Ptr{Cint})::Cint
+    @ccall libmf6.get_grid_rank(c_grid::Ptr{Cint}, grid_rank::Ptr{Cint})::Cint
     return Int(grid_rank[])
 end
 
-function BMI.get_grid_size(::ModflowModel, grid::Int)::Int
+function BMI.get_grid_size(::ModflowModel, grid::Integer)::Int
     grid_size = Ref{Cint}(0)
     c_grid = Ref{Cint}(grid)
-    @ccall libmf6.get_var_grid(grid_size::Ptr{Cint}, c_grid::Ptr{Cint})::Cint
+    @ccall libmf6.get_grid_size(c_grid::Ptr{Cint}, grid_size::Ptr{Cint})::Cint
     return Int(grid_size[])
 end
 
-function BMI.get_grid_type(::ModflowModel, grid::Int)::String
+function BMI.get_grid_type(::ModflowModel, grid::Integer)::String
     buffer = zeros(UInt8, BMI_LENGRIDTYPE)
     c_grid = Ref{Cint}(grid)
-    @ccall libmf6.get_var_type(c_grid::Ptr{Cint}, buffer::Ptr{UInt8})::Cint
+    @ccall libmf6.get_grid_type(c_grid::Ptr{Cint}, buffer::Ptr{UInt8})::Cint
     return trimmed_string(buffer)
 end
 
-function BMI.get_grid_shape(m::ModflowModel, grid::Int)::Tuple{Int}
+function BMI.get_grid_shape(m::ModflowModel, grid::Integer)
     rank = BMI.get_grid_rank(m, grid)
     shape = zeros(Cint, rank)
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_shape(c_grid::Ptr{Cint}, shape::Ptr{Cint})::Cint
-    return tuple(shape...)
+    # The BMI interface returns row major shape; Julia's memory layout is
+    # column major, so we flip the shape around.
+    return Tuple(Int(x) for x in reverse(shape))
 end
 
-function BMI.get_grid_x(::ModflowModel, grid::Int, x::Vector{Float64})
+function BMI.get_grid_x(::ModflowModel, grid::Integer, x::Vector{Float64})::Vector{Float64}
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_x(c_grid::Ptr{Cint}, x::Ptr{Float64})::Cint
-    return nothing
+    return x
 end
 
-function BMI.get_grid_y(::ModflowModel, grid::Int, y::Vector{Float64})
+function BMI.get_grid_y(::ModflowModel, grid::Integer, y::Vector{Float64})::Vector{Float64}
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_y(c_grid::Ptr{Cint}, y::Ptr{Float64})::Cint
-    return nothing
+    return y
 end
 
-function BMI.get_grid_z(::ModflowModel, grid::Int, z::Vector{Float64})
-    c_grid = Ref{Cint}(grid)
-    @ccall libmf6.get_grid_z(c_grid::Ptr{Cint}, z::Ptr{Float64})::Cint
-    return nothing
-end
-
-function BMI.get_grid_node_count(::ModflowModel, grid::Int)::Int
+function BMI.get_grid_node_count(::ModflowModel, grid::Integer)::Int
     grid_node_count = Ref{Cint}(0)
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_node_count(c_grid::Ptr{Cint}, grid_node_count::Ptr{Cint})::Cint
     return Int(grid_node_count[])
 end
 
-function BMI.get_grid_face_count(::ModflowModel, grid::Int)::Int
+function BMI.get_grid_face_count(::ModflowModel, grid::Integer)::Int
     grid_face_count = Ref{Cint}(0)
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_face_count(c_grid::Ptr{Cint}, grid_face_count::Ptr{Cint})::Cint
     return Int(grid_face_count[])
 end
 
-# Mutates input; return or not?
-function BMI.get_grid_face_nodes(::ModflowModel, grid::Int, face_nodes::Vector{Cint})::Int
+function BMI.get_grid_face_nodes(::ModflowModel, grid::Integer, face_nodes::Vector{Cint})::Vector{Cint}
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_face_nodes(c_grid::Ptr{Cint}, face_nodes::Ptr{Cint})::Cint
-    return nothing
+    return face_nodes
 end
 
-# Mutates input; return or not?
 function BMI.get_grid_nodes_per_face(
     ::ModflowModel,
-    grid::Int,
+    grid::Integer,
     nodes_per_face::Vector{Cint},
-)::Int
+)::Vector{Cint}
     c_grid = Ref{Cint}(grid)
     @ccall libmf6.get_grid_nodes_per_face(
         c_grid::Ptr{Cint},
         nodes_per_face::Ptr{Cint},
     )::Cint
-    return nothing
+    return nodes_per_face
 end
 
 # Strictly speaking not BMI
@@ -291,7 +285,7 @@ function get_var_shape(m::ModflowModel, name::String)
     @ccall libmf6.get_var_shape(name::Ptr{UInt8}, shape::Ptr{Int32})::Cint
     # The BMI interface returns row major shape; Julia's memory layout is
     # column major, so we flip the shape around.
-    return tuple(reverse(shape)...)
+    return Tuple(Int(x) for x in reverse(shape))
 end
 
 # XMI
