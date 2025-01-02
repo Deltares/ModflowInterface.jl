@@ -9,8 +9,12 @@ Modflow6_jll = "81230ed9-c869-5493-bf63-2c1575eaf49b"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [compat]
+Aqua = "0.8"
 BasicModelInterface = "0.1"
 Modflow6_jll = "6.3"
+Printf = "1"
+Statistics = "1"
+Test = "1"
 julia = "1.6"
 
 [extras]
